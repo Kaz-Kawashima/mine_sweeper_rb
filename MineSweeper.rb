@@ -203,10 +203,9 @@ if __FILE__ == $0
     gb = GameBoard.new(9, 9, 10)
     gb.print()
     reader = TTY::Reader.new
-    is_finished = false
-
+    finished = false
     result = SAFE
-    while !gb.isFinished
+    while !finished
         input = reader.read_keypress()
         case input
         when "àH"
@@ -218,7 +217,12 @@ if __FILE__ == $0
         when "àK"
             gb.left
         when "o"
-            gb.open
+            result = gb.open
+            if result == SAFE
+                finished = gb.isFinished
+            else
+                finished = true
+            end
         when "f"
             gb.flag
         end
