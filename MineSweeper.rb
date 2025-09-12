@@ -2,8 +2,16 @@ require "io/console"
 require "tty-reader"
 require './Panel.rb'
 
+module GameState
+    Uninitialized = :Uninitialized
+    Playing = :Playing
+    Win = :Win
+    Lose = :Lose
+end
+
 class GameBoard
-    include OpenState
+    include OpenState   
+    include GameState
     @field
     @sizeX
     @sizeY
@@ -11,6 +19,7 @@ class GameBoard
     @fieldSizeY
     @cursor_row
     @cursor_col
+    @status
 
     def initialize(y, x, numBomb)
         @sizeX = x
@@ -20,6 +29,11 @@ class GameBoard
         @numBomb = numBomb
         @cursor_row = 1
         @cursor_col = 1
+        initField()
+        @status = Uninitialized
+    end
+
+    def initField()
         # FillPanel
         @field = []
         for row in 1 .. @fieldSizeY do
@@ -33,15 +47,16 @@ class GameBoard
             end
             @field.push(panelRow)
         end
-        setBomb()
-        calcBombValueGB()
     end
 
-    def setBomb()
+    def setBomb(cursor_row, cursor_col)
         counter = 0
         while counter < @numBomb
             row = rand(1 .. @sizeY)
             col = rand(1 .. @sizeX)
+            if (row == cursor_row) && (col == cursor_col)
+                next
+            end
             if @field[row][col].is_a?(BombPanel)
                 next
             else
@@ -49,9 +64,11 @@ class GameBoard
                 counter += 1
             end
         end
+        calcFieldBombValue()
+        @status = Playing
     end
 
-    def calcBombValueGB()
+    def calcFieldBombValue()
         for row in 1 .. @sizeY do
             for col in 1 .. @sizeX do
                 if @field[row][col].is_a?(BlankPanel)
@@ -71,6 +88,26 @@ class GameBoard
             end
         end
         @field[y][x].bombValue = counter
+    end
+
+    def getStatus()
+        if @status == GameState::Uninitialized
+            return @status
+        end
+        @status = GameState::Win
+        for row in 1 .. @sizeY
+            for col in 1 .. @sizeX
+                p = @field[row][col]
+                if p.isOpen && p.is_a?(BombPanel)
+                    @status = GameState::Lose
+                    return @status
+                end
+                if !p.isOpen && p.is_a?(BlankPanel)
+                    @status = GameState::Playing
+                end
+            end  
+        end
+        return @status
     end
 
     def print()
@@ -98,7 +135,7 @@ class GameBoard
             board_string += "\n"
             row += 1
         end
-        board_string += "\ninput <- ^v -> / O open / F flag (#{countFlag})";
+        board_string += "\ninput <- ^v -> / O open / F flag (#{countFlag})"
         STDOUT.clear_screen
         puts board_string
     end
@@ -131,12 +168,15 @@ class GameBoard
         end
     end
 
-    def open()
-        result = @field[@cursor_row][@cursor_col].open
+    def open(cursor_row = @cursor_row, cursor_col = @cursor_col)
+        if @status == GameState::Uninitialized
+            setBomb(cursor_row, cursor_col)
+        end
+        result = @field[cursor_row][cursor_col].open
         if result == SAFE
             cascadeOpen
         end
-        return result
+        getStatus
     end
 
     def flag()
@@ -183,19 +223,6 @@ class GameBoard
         end
         return count
     end
-
-    def isFinished()
-        @field.each do |panel_row|
-            panel_row.each do |panel|
-                if !panel.isOpen && panel.is_a?(BlankPanel)
-                    return false
-                elsif panel.isOpen && panel.is_a?(BombPanel)
-                    return true
-                end
-            end
-        end
-        return true
-    end
 end
 
 if __FILE__ == $0
@@ -203,9 +230,8 @@ if __FILE__ == $0
     gb = GameBoard.new(9, 9, 10)
     gb.print()
     reader = TTY::Reader.new
-    finished = false
-    result = SAFE
-    while !finished
+    status = GameState::Uninitialized
+    while (status == GameState::Playing) || (status == GameState::Uninitialized)
         input = reader.read_keypress()
         case input
         when "àH"
@@ -217,18 +243,15 @@ if __FILE__ == $0
         when "àK"
             gb.left
         when "o"
-            result = gb.open
-            if result == SAFE
-                finished = gb.isFinished
-            else
-                finished = true
-            end
+            status = gb.open()
         when "f"
             gb.flag
+        when "q"
+            exit
         end
         gb.print
     end
-    if result == SAFE
+    if status == GameState::Win
         puts "\n You Win!"
     else
         puts "\n Game Over!"
