@@ -13,5 +13,5 @@ This code is my Ruby programming practice.
 ## CLI game
 
 ```bash
-ruby mine_sweeper.py
+ruby MineSweeper.rb
 ```
