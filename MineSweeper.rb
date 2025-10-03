@@ -60,7 +60,9 @@ class GameBoard
             if @field[row][col].is_a?(BombPanel)
                 next
             else
+                flag = @field[row][col].isFlagged
                 @field[row][col] = BombPanel.new
+                @field[row][col].isFlagged = flag
                 counter += 1
             end
         end
@@ -188,7 +190,7 @@ class GameBoard
         for row in (y - 1) .. (y + 1)
             for col in (x - 1) .. (x + 1)
                 p = @field[row][col]
-                if !p.isOpen
+                if !p.isOpen and !p.isFlagged
                     p.open
                     new_open += 1
                 end

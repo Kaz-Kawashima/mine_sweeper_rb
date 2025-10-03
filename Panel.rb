@@ -6,13 +6,13 @@ end
 class Panel
     include OpenState
     attr_reader :isOpen
-    attr_reader :isFlagged
+    attr_accessor :isFlagged
     @isOpen
     def flag()
         @isFlagged = !@isFlagged
     end
     def open()
-        raise NotImprementedError, "aaa"
+        raise NotImplementedError, "aaa"
     end
 end
 
